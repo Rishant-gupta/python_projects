@@ -32,60 +32,62 @@ class BankAccount():
 
 
     def deposit(self, ammount, pin=None):
-        c=0
-        if pin != self.__pin: 
-            c+=1
-            if c==3:
-                return "Card blocked"
-            return "Wrong pin"   
-        else:
-            self.__bankbalance += ammount
-            return f"your bankbalance: {self.__bankbalance}"
+        F = True
+        while F == True:
+            if pin == self.__pin: 
+                self.__bankbalance += ammount
+                F = False
+                return f"your bankbalance: {self.__bankbalance}"
+            else:
+                print("Entered pin is wrong: ")
+                pin = int(input("Enter the pin again: "))
+    
             
     def withdraw(self, ammount1, pin=None):
-        c=0
-        if pin != self.__pin:
-            c+=1
-            if c==3:
-                return "Card blocked"
-            return "Wrong pin"
-        else:
-            if self.__bankbalance <=0 or ammount1 > self.__bankbalance :
-             print("Insufficient balance")
+        B = True
+        while B == True:
+            if pin == self.__pin:
+                self.__bankbalance -= ammount1
+                B = False
+                return f"your bankbalance: {self.__bankbalance}"
             else:
-              self.__bankbalance -= ammount1
-            return f"your bankbalance: {self.__bankbalance}"
+                print("Entered pin is wrong: ") 
+                pin = int(input("Enter the pin again: "))
+           
     def balance(self):
         return f"Your current balance: {self.__bankbalance}"
     
-print("Press 1 to create account or press 2 to check details of existing account")
-if int(input())==1:
-    n = input("Enter your name: ")
-    b = int(input("Enter your bank balance: "))
-    p = int(input("Set your pin: "))
+print("create account: ")
+A = False
+n = input("Enter your name: ")
+b = int(input("Enter your bank balance: "))
+while True:
+    p = int(input("Set your 4 digit pin: "))
+    if 999< p <10000:                                             
+        acc1 = BankAccount(n, b, p)
+        print("Account created successfully")
+        print(f"Your acc information:{acc1.info()}")
+        A = True
+        break
+    else:
+        print("Pin should be 4 digit")
 
-    acc1 = BankAccount(n, b, p)
-    print("Account created successfully")
-    print(f"Your acc information:{acc1.info()}")
-else:
-    print("wrong input")
+if A == True:
+    c = int(input('''What task you want to perform?
+         1.To Deposit press 1
+         2.To Withdraw press 2
+         3.To Check Balance press 3:  '''))
 
-c = int(input('''What task you want to perform?
-      1.To Deposit press 1
-      2.To Withdraw press 2
-      3.To Check Balance press 3'''))
-
-
-if c==1:
-    ammount = int(input("Enter the ammount to be deposited: "))
-    pin = int(input("Enter your pin: "))
-    print(acc1.deposit(ammount, pin))
-elif c==2:
-    ammount1 = int(input("Enter the ammount to be withdrawn: "))
-    pin = int(input("Enter your pin: "))
-    print(acc1.withdraw(ammount1, pin))
-elif c==3:
-    print(acc1.info())
+    if c==1:
+        ammount = int(input("Enter the ammount to be deposited: "))
+        pin = int(input("Enter your pin: "))
+        print(acc1.deposit(ammount, pin))
+    if c==2:
+        ammount1 = int(input("Enter the ammount to be withdrawn: "))
+        pin = int(input("Enter your pin: "))
+        print(acc1.withdraw(ammount1, pin))
+    elif c==3:
+        print(acc1.info())
 else:
     print("wrong input")
 
