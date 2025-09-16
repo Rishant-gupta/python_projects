@@ -19,6 +19,8 @@ class BankAccount():
         self.__pin= pin
 
         BankAccount.total_accounts += 1
+        with open(f"{self.owner}_passbook.txt", "a") as f:
+            f.write(f"Account created for {self.owner} with initial balance {self.__bankbalance}\n")
     
     def info(self):
         return f"Account owner: {self.owner}\tAccount balance: {self.__bankbalance}"
@@ -29,18 +31,30 @@ class BankAccount():
     def __del__(self):
         BankAccount.total_accounts -= 1
         return f"{self} is deleted"
-
+    
+    def passbook(self):
+        with open(f"{self.owner}_passbook.txt", "r") as f:
+            content = f.read()
+        return content
 
     def deposit(self, ammount, pin=None):
+        attempt = 1
         F = True
         while F == True:
             if pin == self.__pin: 
                 self.__bankbalance += ammount
+                with open(f"{self.owner}_passbook.txt", "a") as f:
+                    f.write(f"Deposited {ammount}. New balance: {self.__bankbalance}\n")
                 F = False
                 return f"your bankbalance: {self.__bankbalance}"
             else:
                 print("Entered pin is wrong: ")
                 pin = int(input("Enter the pin again: "))
+                attempt += 1
+                if attempt == 3:
+                    F = False
+                    return f"you enetred wrong pin 3 times, your card is blocked"
+                    
     
             
     def withdraw(self, ammount1, pin=None):
@@ -48,6 +62,8 @@ class BankAccount():
         while B == True:
             if pin == self.__pin:
                 self.__bankbalance -= ammount1
+                with open(f"{self.owner}_passbook.txt", "a") as f:
+                    f.write(f"Withdrew {ammount1}. New balance: {self.__bankbalance}\n")
                 B = False
                 return f"your bankbalance: {self.__bankbalance}"
             else:
@@ -76,7 +92,8 @@ if A == True:
     c = int(input('''What task you want to perform?
          1.To Deposit press 1
          2.To Withdraw press 2
-         3.To Check Balance press 3:  '''))
+         3.To Check Balance press 3
+         4.To View Passbook press 4: '''))
 
     if c==1:
         ammount = int(input("Enter the ammount to be deposited: "))
@@ -88,6 +105,8 @@ if A == True:
         print(acc1.withdraw(ammount1, pin))
     elif c==3:
         print(acc1.info())
+    elif c==4:
+        print(acc1.passbook())
 else:
     print("wrong input")
 
