@@ -54,10 +54,9 @@ class BankAccount():
                 if attempt == 3:
                     F = False
                     return f"you enetred wrong pin 3 times, your card is blocked"
-                    
-    
-            
+                                
     def withdraw(self, ammount1, pin=None):
+        attempt = 1
         B = True
         while B == True:
             if pin == self.__pin:
@@ -69,6 +68,10 @@ class BankAccount():
             else:
                 print("Entered pin is wrong: ") 
                 pin = int(input("Enter the pin again: "))
+                attempt += 1
+                if attempt == 3:
+                    B = False
+                    return f"you enetred wrong pin 3 times, your card is blocked"
            
     def balance(self):
         return f"Your current balance: {self.__bankbalance}"
@@ -79,7 +82,7 @@ n = input("Enter your name: ")
 b = int(input("Enter your bank balance: "))
 while True:
     p = int(input("Set your 4 digit pin: "))
-    if 999< p <10000:                                             
+    if 999 < p < 10000:                                             
         acc1 = BankAccount(n, b, p)
         print("Account created successfully")
         print(f"Your acc information:{acc1.info()}")
