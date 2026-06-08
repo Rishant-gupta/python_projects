@@ -2,22 +2,29 @@ import aiohttp
 import asyncio
 import json
 import os
-from dotenv import load_dotenv
 from utils import timer, logger, retry
 
-load_dotenv()
-api_key = os.environ.get("WEATHER_API")
+
 
 class WeatherClient:
     
     BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
-    CACHE_FILE = "cache/weather_cache.json"
+    CACHE_FILE = "weather_cli/cache/weather_cache.json"
 
     def __init__(self, api_key):
         self.api_key = api_key
         self.cache = {}
+        self.session = None
         self.load_cache()
 
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self 
+    
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.session.close()
+        return False
+        
     @logger
     @timer
     def load_cache(self):
@@ -43,7 +50,7 @@ class WeatherClient:
     @retry(3)
     @logger
     @timer
-    async def fetch_city(self, session, city):
+    async def fetch_city(self, city):
         city_name = city.strip()
         
         if city_name in self.cache:
@@ -51,7 +58,7 @@ class WeatherClient:
         else:
             url = f"{self.BASE_URL}q={city_name},IN&appid={self.api_key}"
             
-            async with session.get(url) as response:
+            async with self.session.get(url) as response:
 
                 if response.status == 404:
                     print(f"city not found: {city_name}")
@@ -71,10 +78,10 @@ class WeatherClient:
     @timer
     async def fetch_multiple(self, cities):
         
-        async with aiohttp.ClientSession() as session:
-            results = await asyncio.gather(
-                *[self.fetch_city(session=session, city= city) for city in cities]
-            )
+        
+        results = await asyncio.gather(
+            *[self.fetch_city(city= city) for city in cities]
+        )
 
         return [r for r in results if r is not None]
 
@@ -142,7 +149,7 @@ class WeatherClient:
     
     @logger
     @timer
-    def save_cache(self, data):
+    def save_cache(self):
         with open(self.CACHE_FILE, "w") as f:
             json.dump(self.cache, f, indent=4)
             
@@ -155,4 +162,9 @@ class WeatherClient:
             print("cache is cleared")
         except FileNotFoundError:
             print("no cache file found — nothing to delete")
+    
+          
+
+        
+
         
