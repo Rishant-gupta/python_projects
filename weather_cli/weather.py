@@ -2,12 +2,15 @@ import aiohttp
 import asyncio
 import json
 import os
-from d
+from dotenv import load_dotenv
 from utils import timer, logger, retry
+
+load_dotenv()
+api_key = os.environ.get("WEATHER_API")
 
 class WeatherClient:
     
-    BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
+    BASE_URL = "https://api.openweathermap.org/data/2.5/weather?"
     CACHE_FILE = "cache/weather_cache.json"
 
     def __init__(self, api_key):
@@ -15,38 +18,141 @@ class WeatherClient:
         self.cache = {}
         self.load_cache()
 
+    @logger
+    @timer
     def load_cache(self):
-        # loads cache from JSON file if it exists
-        # stores in self.cache dict
+        
+        if  os.path.exists("cache/") and not os.path.exists(self.CACHE_FILE):
+            self.cache  = {}
+        
+        elif os.path.exists(self.CACHE_FILE):
 
+            try:
+                with open(self.CACHE_FILE, "r") as f:
+                    self.cache = json.load(f)
+            except :
+                self.clear_cache()
+
+        else:
+            self.cache = {}
+            folder_name = "cache"
+            os.makedirs(folder_name)
+            print(f"{folder_name} is created")
+
+
+    @retry(3)
+    @logger
+    @timer
     async def fetch_city(self, session, city):
-        # checks cache first — returns cached result if exists
-        # if not cached — makes API call using aiohttp
-        # stores result in cache
-        # returns weather data dict
+        city_name = city.strip()
+        
+        if city_name in self.cache:
+            return self.cache[city_name]
+        else:
+            url = f"{self.BASE_URL}q={city_name},IN&appid={self.api_key}"
+            
+            async with session.get(url) as response:
 
+                if response.status == 404:
+                    print(f"city not found: {city_name}")
+                    return None
+                if response.status == 401:
+                    raise Exception("invalid API key")
+                data = await response.json()     
+                        
+            result = self.parse(data)
+            self.cache[city_name] = result
+            self.save_cache()
+
+            return result         
+
+    @retry(3)
+    @logger
+    @timer
     async def fetch_multiple(self, cities):
-        # creates one aiohttp session
-        # uses asyncio.gather to fetch all cities simultaneously
-        # returns list of results
+        
+        async with aiohttp.ClientSession() as session:
+            results = await asyncio.gather(
+                *[self.fetch_city(session=session, city= city) for city in cities]
+            )
 
+        return [r for r in results if r is not None]
+
+    @logger
+    @timer
     def parse(self, data):
-        # extracts relevant fields from raw API response
-        # returns clean dict:
-        # {city, temp_celsius, feels_like, humidity, wind_speed, description}
+        
+    
+        clean_dict = {
 
+            "city":         data["name"],
+            "temp":         round(data["main"]["temp"] - 273.15, 2),
+            "feels_like":   round(data["main"]["feels_like"] - 273.15, 2),
+            "pressure":     data["main"]["pressure"],
+            "humidity":     data["main"]["humidity"],
+            "wind_speed":   data["wind"]["speed"],
+            "description":  data["weather"][0]["description"]
+        }
+        
+        return clean_dict
+        
+    @logger
+    @timer
     def display(self, results):
-        # prints results as clean aligned table
+        if not results:
+            print("no results to display")
+            return
+        w = 18
 
+        # header
+        headers = ["city", "temp", "feels like", "pressure", "humidity", "wind", "description"]
+        print("".join(f"{h:<{w}}" for h in headers))
+        print("-" * w * len(headers))
+
+        # rows
+        for row in results:
+            values = [
+                row['city'],
+                f"{row['temp']}°C",
+                f"{row['feels_like']}°C",
+                f"{row['pressure']} hPa",
+                f"{row['humidity']}%",
+                f"{row['wind_speed']} m/s",
+                row['description']
+            ]
+            print("".join(f"{v:<{w}}" for v in values))
+
+    @logger
+    @timer
     def compare(self, results):
-        # shows which city is hottest, coldest, most humid
+        
+        if not results:
+            print("no results to compare")
+            return
 
-    def save(self, results, filepath):
-        # saves results to JSON file
+        hottest  = max(results, key=lambda x: x["temp"])
+        coldest  = min(results, key=lambda x: x["temp"])
+        humid    = max(results, key=lambda x: x["humidity"])
 
-    def save_cache(self):
-        # writes self.cache to cache JSON file
+        print("\n---- COMPARISON ----")
+        print(f"hottest  → {hottest['city']:<15} {hottest['temp']}°C")
+        print(f"coldest  → {coldest['city']:<15} {coldest['temp']}°C")
+        print(f"most humid → {humid['city']:<15} {humid['humidity']}%")
 
+    
+    @logger
+    @timer
+    def save_cache(self, data):
+        with open(self.CACHE_FILE, "w") as f:
+            json.dump(self.cache, f, indent=4)
+            
+    @logger
+    @timer
     def clear_cache(self):
-        # empties self.cache
-        # deletes cache file
+        self.cache = {}
+        try:   
+            os.remove(self.CACHE_FILE)
+            print("cache is cleared")
+        except FileNotFoundError:
+            print("no cache file found — nothing to delete")
+        
