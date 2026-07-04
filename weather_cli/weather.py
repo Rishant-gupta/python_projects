@@ -23,13 +23,14 @@ class WeatherClient:
     
     async def __aexit__(self, exc_type, exc, tb):
         await self.session.close()
+        self.save_cache()
         return False
         
     @logger
     @timer
     def load_cache(self):
         
-        if  os.path.exists("cache/") and not os.path.exists(self.CACHE_FILE):
+        if  os.path.exists("weather_cli/cache/") and not os.path.exists(self.CACHE_FILE):
             self.cache  = {}
         
         elif os.path.exists(self.CACHE_FILE):
@@ -65,6 +66,7 @@ class WeatherClient:
                     return None
                 if response.status == 401:
                     raise Exception("invalid API key")
+                
                 data = await response.json()     
                         
             result = self.parse(data)
@@ -89,7 +91,6 @@ class WeatherClient:
     @timer
     def parse(self, data):
         
-    
         clean_dict = {
 
             "city":         data["name"],
